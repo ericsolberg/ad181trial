@@ -1,0 +1,5 @@
+{
+  "ProjectOverviewURL": "https://69b03ff4trial.launchpad.cfapps.us10.hana.ondemand.com/lcapcustomer_loyalty.customer_loyaltyLaunchpad-1.0.0/",
+  "DeployedUTCTime": "2024-10-04T23:06:51.178Z",
+  "ApplicationLogURL": "https://logs.cf.us10-001.hana.ondemand.com/app/dashboards#/view/Overview?_g=(filters:!((query:(match_phrase:(component_name:customer_loyalty-srv)))))"
+}

@@ -1,0 +1,262 @@
+_schema-version: '3.1'
+ID: customer_loyalty
+version: 1.0.0
+description: A simple CAP project.
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - rm -rf build/dist
+        - mkdir -p build/dist
+        - rm -rf build/ui-deployer
+        - mkdir -p build/ui-deployer
+    - builder: custom
+      commands:
+        - npm install --production
+        - >-
+          bash -c "cds -v | grep 'cds-dk' || npm i --production --no-save
+          @sap/cds-dk @sap/mdk-tools"
+        - bash -c "export PATH=$PATH:$(pwd)/node_modules/.bin"
+        - cds build --production
+  after-all:
+    - builder: custom
+      commands:
+        - npm install
+modules:
+  - name: customer_loyalty-customerloyalty.customers
+    type: html5
+    path: app/customer_loyalty.customers
+    build-parameters:
+      builder: custom
+      commands:
+        - rm -rf dist-zip dist
+        - npm install
+        - >-
+          npx -p @ui5/cli@^3.0.0 ui5 build --dest dist
+          --include-task=generateCachebusterInfo
+        - mkdir dist-zip
+        - >-
+          bash -c "cd dist && npx bestzip
+          ../dist-zip/customerloyaltycustomers.zip *"
+      _artifactName: customerloyaltycustomers.zip
+      supported-platforms: []
+      build-result: dist-zip
+  - name: customer_loyalty-customerloyalty.purchases
+    type: html5
+    path: app/customer_loyalty.purchases
+    build-parameters:
+      builder: custom
+      commands:
+        - rm -rf dist-zip dist
+        - npm install
+        - >-
+          npx -p @ui5/cli@^3.0.0 ui5 build --dest dist
+          --include-task=generateCachebusterInfo
+        - mkdir dist-zip
+        - >-
+          bash -c "cd dist && npx bestzip
+          ../dist-zip/customerloyaltypurchases.zip *"
+      _artifactName: customerloyaltypurchases.zip
+      supported-platforms: []
+      build-result: dist-zip
+  - name: customer_loyalty-customerloyalty.redemptions
+    type: html5
+    path: app/customer_loyalty.redemptions
+    build-parameters:
+      builder: custom
+      commands:
+        - rm -rf dist-zip dist
+        - npm install
+        - >-
+          npx -p @ui5/cli@^3.0.0 ui5 build --dest dist
+          --include-task=generateCachebusterInfo
+        - mkdir dist-zip
+        - >-
+          bash -c "cd dist && npx bestzip
+          ../dist-zip/customerloyaltyredemptions.zip *"
+      _artifactName: customerloyaltyredemptions.zip
+      supported-platforms: []
+      build-result: dist-zip
+  - name: customer_loyalty-db-deployer
+    type: hdb
+    path: gen/db
+    parameters:
+      buildpack: nodejs_buildpack
+    build-parameters:
+      builder: npm
+      ignore:
+        - node_modules
+        - package-lock.json
+    requires:
+      - name: customer_loyalty-service-uaa
+      - name: customer_loyalty-service-db
+  - name: customer_loyalty-srv
+    type: nodejs
+    path: gen/srv
+    parameters:
+      memory: 256MB
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: ${default-url}
+    build-parameters:
+      builder: npm
+      ignore:
+        - node_modules
+        - package-lock.json
+    requires:
+      - name: customer_loyalty-service-uaa
+      - name: customer_loyalty-service-db
+      - name: customer_loyalty-service-destination
+      - name: customer_loyalty-service-metadata
+      - name: customer_loyalty-service-connectivity
+      - name: customer_loyalty-service-logs
+  - name: customer_loyalty-aux-destinations
+    type: com.sap.application.content
+    parameters:
+      content:
+        subaccount:
+          existing_destinations_policy: update
+          destinations:
+            - Authentication: OAuth2UserTokenExchange
+              Name: customer_loyalty-service-uaa
+              ServiceInstanceName: customer_loyalty-uaa
+              ServiceKeyName: customer_loyalty-uaa-key
+              sap.cloud.service: lcap.customer_loyalty
+            - Authentication: OAuth2UserTokenExchange
+              Name: customer_loyalty-app-srv
+              TokenServiceInstanceName: customer_loyalty-uaa
+              TokenServiceKeyName: customer_loyalty-uaa-key
+              URL: ~{srv-api/srv-url}
+              sap.cloud.service: lcap.customer_loyalty
+            - Name: customer_loyalty-service-html5-apps-repo-host
+              ServiceInstanceName: customer_loyalty-html5-apps-repo-host
+              ServiceKeyName: customer_loyalty-html5-apps-repo-host-key
+              sap.cloud.service: lcap.customer_loyalty
+            - Authentication: OAuth2UserTokenExchange
+              Name: customer_loyalty-customer_loyaltySrv
+              TokenServiceInstanceName: customer_loyalty-uaa
+              TokenServiceKeyName: customer_loyalty-uaa-key
+              URL: ~{srv-api/srv-url}/service/customer_loyalty
+              sap.cloud.service: lcap.customer_loyalty
+              sap.applicationdevelopment.actions.enabled: false
+              sap.build.usage: CAP
+              sap.processautomation.enabled: false
+              HTML5.DynamicDestination: false
+              WebIDEEnabled: false
+              MobileEnabled: false
+              AppgyverEnabled: false
+    build-parameters:
+      no-source: true
+    requires:
+      - name: customer_loyalty-service-uaa
+        parameters:
+          service-key:
+            name: customer_loyalty-uaa-key
+      - name: srv-api
+      - name: customer_loyalty-service-html5-apps-repo-host
+        parameters:
+          service-key:
+            name: customer_loyalty-html5-apps-repo-host-key
+      - name: customer_loyalty-service-destination
+        parameters:
+          content-target: true
+  - name: customer_loyalty-launchpad
+    type: html5
+    path: build/launchpad
+    build-parameters:
+      builder: custom
+      commands:
+        - npm install
+        - >-
+          npx -p @ui5/cli@^3.0.0 ui5 build --dest dist
+          --include-task=generateCachebusterInfo
+        - bash -c "cd dist && npx bestzip ../../../build/dist/launchpad.zip *"
+        - rm -rf dist
+      _artifactName: launchpad.zip
+      supported-platforms: []
+      build-result: ../../build/dist
+  - name: customer_loyalty-aux-ui-deployer
+    type: com.sap.application.content
+    path: build/ui-deployer
+    build-parameters:
+      build-result: resources
+      requires:
+        - name: customer_loyalty-customerloyalty.customers
+          artifacts:
+            - customerloyaltycustomers.zip
+          target-path: resources
+        - name: customer_loyalty-customerloyalty.purchases
+          artifacts:
+            - customerloyaltypurchases.zip
+          target-path: resources
+        - name: customer_loyalty-customerloyalty.redemptions
+          artifacts:
+            - customerloyaltyredemptions.zip
+          target-path: resources
+        - name: customer_loyalty-launchpad
+          artifacts:
+            - launchpad.zip
+          target-path: resources
+    requires:
+      - name: customer_loyalty-service-html5-apps-repo-host
+        parameters:
+          content-target: true
+resources:
+  - type: org.cloudfoundry.managed-service
+    name: customer_loyalty-service-uaa
+    parameters:
+      service: xsuaa
+      service-plan: application
+      service-name: customer_loyalty-uaa
+      path: xs-security.json
+      config:
+        oauth2-configuration:
+          redirect-uris:
+            - https://*.${default-domain}/login/*
+        xsappname: customer_loyalty-${space}
+        role-collections: []
+  - type: org.cloudfoundry.managed-service
+    name: customer_loyalty-service-db
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+      service-name: customer_loyalty-db
+  - type: org.cloudfoundry.managed-service
+    name: customer_loyalty-service-destination
+    parameters:
+      service: destination
+      service-plan: lite
+      service-name: customer_loyalty-destination
+      config:
+        HTML5Runtime_enabled: true
+        version: 1.0.0
+  - type: org.cloudfoundry.user-provided-service
+    name: customer_loyalty-service-metadata
+    parameters:
+      service: metadata
+      service-plan: standard
+      service-name: customer_loyalty-metadata
+      config:
+        default-domain: ${default-domain}
+  - type: org.cloudfoundry.managed-service
+    name: customer_loyalty-service-connectivity
+    parameters:
+      service: connectivity
+      service-plan: lite
+      service-name: customer_loyalty-connectivity
+  - type: org.cloudfoundry.managed-service
+    name: customer_loyalty-service-logs
+    parameters:
+      service: application-logs
+      service-plan: lite
+      service-name: customer_loyalty-logs
+  - type: org.cloudfoundry.managed-service
+    name: customer_loyalty-service-html5-apps-repo-host
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+      service-name: customer_loyalty-html5-apps-repo-host

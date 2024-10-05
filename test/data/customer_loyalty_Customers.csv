@@ -1,0 +1,6 @@
+ID;name;email;customerNumber;totalPurchaseValue;totalRewardPoints;totalRedeemedRewardPoints
+b6dce739-8184-46cb-b590-41161fc9689c;John Smith;john.smith@example.com;1234567;500;50;20
+7ce3d81d-f2d3-464c-bac8-5dadf28ffe54;Jane Doe;jane.doe@example.com;2345678;1000;100;50
+5cfeea8d-392e-442e-b78d-5bf14a26ff66;Michael Johnson;michael.johnson@example.com;3456789;1500;150;75
+319641fa-6f31-4c32-b6c4-a231990bfc7b;Emily Williams;emily.williams@example.com;4567890;2000;200;100
+6a92e541-1565-4b7a-bf9c-6473b13c147c;David Brown;david.brown@example.com;5678901;2500;250;125
